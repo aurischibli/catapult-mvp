@@ -25,6 +25,7 @@
             text-transform: uppercase;
         }
         .btn-launch:hover { background-color: #eab308; }
+        .btn-launch:disabled { background-color: #4b5563; cursor: not-allowed; }
         .header-font { font-family: 'Roboto Condensed', sans-serif; }
 
         /* Custom scrollbar for a more 'pro' feel */
@@ -40,6 +41,15 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #eab308;
+        }
+        
+        /* Simple fade-in animation for cart items */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
         }
     </style>
 </head>
@@ -78,36 +88,35 @@
                         </div>
                         <div class="flex justify-between font-bold text-lg text-gray-400">
                             <span>Delivery Fee</span>
-                            <span>$15.00</span>
+                            <span id="delivery-fee">$15.00</span>
                         </div>
                          <div class="flex justify-between font-bold text-2xl mt-2 brand-yellow">
                             <span>Total</span>
-                            <span id="total">$15.00</span>
+                            <span id="total">$0.00</span>
                         </div>
                     </div>
                     
                     <h3 class="header-font text-xl font-bold mt-6 mb-2 tracking-wide">NEED SOMETHING ELSE?</h3>
-                    <textarea id="custom-request" class="w-full bg-gray-900 text-white p-2 rounded border border-gray-600 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" rows="3" placeholder="e.g., '1 x DeWalt Hammer Drill battery', '3 bags of river sand'"></textarea>
+                    <textarea id="custom-request" name="custom_request" class="w-full bg-gray-900 text-white p-2 rounded border border-gray-600 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" rows="3" placeholder="e.g., '1 x DeWalt Hammer Drill battery', '3 bags of river sand'"></textarea>
 
                     <h3 class="header-font text-xl font-bold mt-6 mb-2 tracking-wide">DELIVERY DETAILS (SYDNEY CBD)</h3>
-                    <input type="text" id="customer-name" placeholder="Your Name" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
-                    <input type="tel" id="customer-phone" placeholder="Your Phone Number" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
-                    <input type="text" id="delivery-address" placeholder="Job Site Address (Sydney CBD)" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-4 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    <input type="text" id="customer-name" name="customer_name" placeholder="Your Name" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    <input type="tel" id="customer-phone" name="customer_phone" placeholder="Your Phone Number" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    <input type="text" id="delivery-address" name="delivery_address" placeholder="Job Site Address (Sydney CBD)" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-4 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
                     
-                    <button type="submit" id="launch-order" class="w-full btn-launch py-3 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
+                    <button type="submit" id="launch-order-btn" class="w-full btn-launch py-3 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
                         LAUNCH MY ORDER
                     </button>
                     <div id="order-status" class="text-center mt-4 font-bold"></div>
                 </form>
             </div>
         </div>
-
     </div>
 
     <script>
         // --- CONFIGURATION ---
-        // *** IMPORTANT: Change this to your email address ***
-        const YOUR_EMAIL_ADDRESS = "aschibli@seesharp.au"; 
+        // *** IMPORTANT: Paste your Formspree endpoint URL here ***
+        const FORMSPREE_ENDPOINT = "https://formspree.io/f/xrbkaeza"; 
         const DELIVERY_FEE = 15.00;
 
         // --- PRODUCT INVENTORY (Hardcoded for single-file MVP) ---
@@ -143,8 +152,10 @@
         const cartItemsEl = document.getElementById('cart-items');
         const subtotalEl = document.getElementById('subtotal');
         const totalEl = document.getElementById('total');
+        const deliveryFeeEl = document.getElementById('delivery-fee');
         const orderForm = document.getElementById('order-form');
         const orderStatusEl = document.getElementById('order-status');
+        const launchBtn = document.getElementById('launch-order-btn');
 
         // --- FUNCTIONS ---
         function initializeProducts() {
@@ -153,8 +164,7 @@
 
         function renderProducts() {
             productGrid.innerHTML = '';
-            for (const id in products) {
-                const product = products[id];
+            productInventory.forEach(product => {
                 productGrid.innerHTML += `
                     <div class="bg-gray-900/50 p-4 rounded-lg shadow-md flex flex-col justify-between border border-gray-700 hover:border-yellow-400 transition-all duration-300">
                         <div>
@@ -162,57 +172,48 @@
                             <p class="text-sm text-gray-400 mb-2">${product.tradeUse}</p>
                             <p class="text-2xl font-black brand-yellow mb-4">$${product.price.toFixed(2)}</p>
                         </div>
-                        <button onclick="addToCart('${id}')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors">
+                        <button onclick="addToCart('${product.id}')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors">
                             Add to Cart
                         </button>
                     </div>
                 `;
-            }
+            });
         }
 
         function renderCart() {
-            if (Object.keys(cart).length === 0) {
+            const hasItems = Object.keys(cart).length > 0;
+            if (!hasItems) {
                 cartItemsEl.innerHTML = '<p class="text-gray-400">Your cart is empty.</p>';
-                updateTotals();
-                return;
-            }
-
-            cartItemsEl.innerHTML = '';
-            for (const id in cart) {
-                const product = products[id];
-                const quantity = cart[id];
-                cartItemsEl.innerHTML += `
-                    <div class="flex justify-between items-center mb-2 animate-fade-in">
-                        <div>
-                            <p class="font-bold text-white">${product.name}</p>
-                            <p class="text-sm text-gray-400">$${product.price.toFixed(2)}</p>
+            } else {
+                cartItemsEl.innerHTML = '';
+                for (const id in cart) {
+                    const product = products[id];
+                    const quantity = cart[id];
+                    cartItemsEl.innerHTML += `
+                        <div class="flex justify-between items-center mb-2 animate-fade-in">
+                            <div>
+                                <p class="font-bold text-white">${product.name}</p>
+                                <p class="text-sm text-gray-400">$${product.price.toFixed(2)}</p>
+                            </div>
+                            <div class="flex items-center bg-gray-700 rounded">
+                                <button type="button" onclick="updateQuantity('${id}', -1)" class="px-2 py-1 font-bold text-lg">-</button>
+                                <span class="px-3 py-1 bg-gray-800">${quantity}</span>
+                                <button type="button" onclick="updateQuantity('${id}', 1)" class="px-2 py-1 font-bold text-lg">+</button>
+                            </div>
                         </div>
-                        <div class="flex items-center bg-gray-700 rounded">
-                            <button type="button" onclick="updateQuantity('${id}', -1)" class="px-2 py-1 font-bold text-lg">-</button>
-                            <span class="px-3 py-1 bg-gray-800">${quantity}</span>
-                            <button type="button" onclick="updateQuantity('${id}', 1)" class="px-2 py-1 font-bold text-lg">+</button>
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
             }
             updateTotals();
         }
         
         function updateTotals() {
-            let subtotal = 0;
-            for (const id in cart) {
-                subtotal += products[id].price * cart[id];
-            }
-            const total = subtotal > 0 ? subtotal + DELIVERY_FEE : 0;
-            const finalTotal = (subtotal === 0 && Object.keys(cart).length === 0) ? DELIVERY_FEE : subtotal + DELIVERY_FEE;
-
+            const subtotal = Object.keys(cart).reduce((acc, id) => acc + (products[id].price * cart[id]), 0);
+            const hasItems = subtotal > 0;
 
             subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
-            totalEl.textContent = `$${(subtotal > 0 ? finalTotal : 0.00).toFixed(2)}`;
-            if (subtotal === 0) {
-                 totalEl.textContent = `$${DELIVERY_FEE.toFixed(2)}`;
-            }
-
+            deliveryFeeEl.textContent = hasItems ? `$${DELIVERY_FEE.toFixed(2)}` : '$0.00';
+            totalEl.textContent = hasItems ? `$${(subtotal + DELIVERY_FEE).toFixed(2)}` : '$0.00';
         }
 
         function addToCart(productId) {
@@ -231,58 +232,59 @@
         }
 
         function handleFormSubmit(event) {
-            event.preventDefault(); // Stop form from submitting normally
+            event.preventDefault();
+            const form = event.target;
+            const data = new FormData(form);
 
-            const customerName = document.getElementById('customer-name').value;
-            const customerPhone = document.getElementById('customer-phone').value;
-            const deliveryAddress = document.getElementById('delivery-address').value;
-            const customRequest = document.getElementById('custom-request').value;
+            const hasItems = Object.keys(cart).length > 0;
+            const hasCustomRequest = data.get('custom_request').trim() !== '';
 
-            if (Object.keys(cart).length === 0 && !customRequest.trim()) {
+            if (!hasItems && !hasCustomRequest) {
                 orderStatusEl.textContent = 'Your cart is empty.';
-                orderStatusEl.classList.add('text-red-500');
+                orderStatusEl.className = 'text-center mt-4 font-bold text-red-500';
                 return;
             }
 
-            orderStatusEl.textContent = 'Preparing order...';
-            orderStatusEl.classList.remove('text-red-500', 'text-green-500');
-            
-            // --- Build Email Body ---
-            let emailBody = "NEW CATAPULT ORDER\n";
-            emailBody += "======================\n\n";
-            emailBody += `CUSTOMER: ${customerName}\n`;
-            emailBody += `PHONE: ${customerPhone}\n`;
-            emailBody += `ADDRESS: ${deliveryAddress}\n\n`;
-            emailBody += "--- ITEMS ---\n";
+            // Append cart data to the form data for submission
+            data.append('order_summary', JSON.stringify(cart, (key, value) => {
+                if (key) return { name: products[key].name, quantity: value };
+            }, 2));
+             const subtotal = Object.keys(cart).reduce((acc, id) => acc + (products[id].price * cart[id]), 0);
+            data.append('subtotal', `$${subtotal.toFixed(2)}`);
+            data.append('delivery_fee', `$${DELIVERY_FEE.toFixed(2)}`);
+            data.append('total_cost', `$${(subtotal + DELIVERY_FEE).toFixed(2)}`);
 
-            let subtotal = 0;
-            for (const id in cart) {
-                const item = products[id];
-                const quantity = cart[id];
-                const itemTotal = item.price * quantity;
-                subtotal += itemTotal;
-                emailBody += `${quantity} x ${item.name} (@ $${item.price.toFixed(2)} each) = $${itemTotal.toFixed(2)}\n`;
-            }
+            orderStatusEl.textContent = 'Launching...';
+            orderStatusEl.className = 'text-center mt-4 font-bold text-yellow-400';
+            launchBtn.disabled = true;
 
-            if (customRequest.trim()) {
-                emailBody += "\n--- CUSTOM REQUEST ---\n";
-                emailBody += `${customRequest}\n`;
-            }
-            
-            emailBody += "\n======================\n";
-            emailBody += `SUBTOTAL: $${subtotal.toFixed(2)}\n`;
-            emailBody += `DELIVERY FEE: $${DELIVERY_FEE.toFixed(2)}\n`;
-            emailBody += `TOTAL: $${(subtotal + DELIVERY_FEE).toFixed(2)}\n\n`;
-            emailBody += `Order placed at: ${new Date().toLocaleString('en-AU')}`;
-
-            // --- Create and open mailto link ---
-            const subject = `New Catapult Order from ${customerName}`;
-            const mailtoLink = `mailto:${YOUR_EMAIL_ADDRESS}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
-            
-            window.location.href = mailtoLink;
-            
-            orderStatusEl.textContent = 'Your email app has been opened to send the order!';
-            orderStatusEl.classList.add('text-green-500');
+            fetch(FORMSPREE_ENDPOINT, {
+                method: 'POST',
+                body: data,
+                headers: { 'Accept': 'application/json' }
+            }).then(response => {
+                if (response.ok) {
+                    orderStatusEl.textContent = 'ORDER LAUNCHED! We\'re on our way.';
+                    orderStatusEl.className = 'text-center mt-4 font-bold text-green-500';
+                    form.reset();
+                    Object.keys(cart).forEach(key => delete cart[key]);
+                    renderCart();
+                } else {
+                    response.json().then(data => {
+                        if (Object.hasOwn(data, 'errors')) {
+                            orderStatusEl.textContent = data["errors"].map(error => error["message"]).join(", ");
+                        } else {
+                            orderStatusEl.textContent = 'Oops! There was a problem submitting your order.';
+                        }
+                        orderStatusEl.className = 'text-center mt-4 font-bold text-red-500';
+                    })
+                }
+            }).catch(error => {
+                orderStatusEl.textContent = 'Oops! There was a network problem.';
+                orderStatusEl.className = 'text-center mt-4 font-bold text-red-500';
+            }).finally(() => {
+                launchBtn.disabled = false;
+            });
         }
 
         // --- INITIAL LOAD ---
