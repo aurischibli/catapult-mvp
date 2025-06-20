@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CATAPULT - On-Site Delivery</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Using a Google Font for a tougher, more industrial feel */
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@700&family=Inter:wght@400;700;900&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        .brand-bg { background-color: #111827; } /* A darker, more serious gray */
+        .brand-yellow { color: #facc15; } /* A punchier, more visible yellow */
+        .btn-launch { 
+            background-color: #facc15; 
+            color: #111827; 
+            font-family: 'Roboto Condensed', sans-serif;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+        .btn-launch:hover { background-color: #eab308; }
+        .header-font { font-family: 'Roboto Condensed', sans-serif; }
+
+        /* Custom scrollbar for a more 'pro' feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #facc15;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #eab308;
+        }
+    </style>
+</head>
+<body class="brand-bg text-gray-200">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <!-- HEADER -->
+        <header class="text-center mb-10 border-b-4 border-yellow-400 pb-4">
+            <h1 class="header-font text-5xl md:text-7xl font-black tracking-tighter text-white">CATAPULT</h1>
+            <p class="text-xl md:text-2xl text-gray-400 mt-1">Site to supplier, fast. No more runs. Just results.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- PRODUCTS (LEFT/MAIN) -->
+            <div class="lg:col-span-2">
+                <h2 class="header-font text-3xl font-bold mb-6 brand-yellow tracking-wide">GEAR ON DEMAND</h2>
+                <div id="product-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <!-- Products will be loaded here by JavaScript -->
+                    <p class="text-gray-400 col-span-full">Loading gear...</p>
+                </div>
+            </div>
+
+            <!-- ORDER SUMMARY (RIGHT/SIDEBAR) -->
+            <div class="lg:col-span-1">
+                <form id="order-form" class="bg-gray-800 p-6 rounded-lg shadow-2xl sticky top-8">
+                    <h2 class="header-font text-2xl font-bold mb-4 brand-yellow tracking-wide">YOUR ORDER</h2>
+                    <div id="cart-items" class="mb-4 min-h-[40px]">
+                        <p class="text-gray-400">Your cart is empty.</p>
+                    </div>
+                    
+                    <div class="border-t border-gray-600 pt-4 mb-4">
+                        <div class="flex justify-between font-bold text-lg">
+                            <span>Subtotal</span>
+                            <span id="subtotal">$0.00</span>
+                        </div>
+                        <div class="flex justify-between font-bold text-lg text-gray-400">
+                            <span>Delivery Fee</span>
+                            <span>$15.00</span>
+                        </div>
+                         <div class="flex justify-between font-bold text-2xl mt-2 brand-yellow">
+                            <span>Total</span>
+                            <span id="total">$15.00</span>
+                        </div>
+                    </div>
+                    
+                    <h3 class="header-font text-xl font-bold mt-6 mb-2 tracking-wide">NEED SOMETHING ELSE?</h3>
+                    <textarea id="custom-request" class="w-full bg-gray-900 text-white p-2 rounded border border-gray-600 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" rows="3" placeholder="e.g., '1 x DeWalt Hammer Drill battery', '3 bags of river sand'"></textarea>
+
+                    <h3 class="header-font text-xl font-bold mt-6 mb-2 tracking-wide">DELIVERY DETAILS (SYDNEY CBD)</h3>
+                    <input type="text" id="customer-name" placeholder="Your Name" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    <input type="tel" id="customer-phone" placeholder="Your Phone Number" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    <input type="text" id="delivery-address" placeholder="Job Site Address (Sydney CBD)" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-4 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    
+                    <button type="submit" id="launch-order" class="w-full btn-launch py-3 rounded-lg text-xl transition-transform transform hover:scale-105 shadow-lg">
+                        LAUNCH MY ORDER
+                    </button>
+                    <div id="order-status" class="text-center mt-4 font-bold"></div>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- CONFIGURATION ---
+        // *** IMPORTANT: Change this to your email address ***
+        const YOUR_EMAIL_ADDRESS = "aschibli@seesharp.au"; 
+        const DELIVERY_FEE = 15.00;
+
+        // --- PRODUCT INVENTORY (Hardcoded for single-file MVP) ---
+        const productInventory = [
+            { id: 'tek_screws_100mm', name: '100mm Tek Screws (Box)', tradeUse: 'Builders, Chippies', price: 24.95 },
+            { id: 'silicone_universal', name: 'Universal Silicone (White, 300ml)', tradeUse: 'Tilers, Plumbers', price: 9.95 },
+            { id: 'tile_adhesive_20kg', name: 'Bag of Tile Adhesive (20kg)', tradeUse: 'Tilers', price: 27.00 },
+            { id: 'electrical_tape', name: 'Electrical Tape (Multi-Pack)', tradeUse: 'Sparkies', price: 6.50 },
+            { id: 'pvc_conduit_20mm', name: 'PVC Conduit (20mm, 3m)', tradeUse: 'Sparkies', price: 4.20 },
+            { id: 'grout_5kg', name: 'General Purpose Grout (5kg)', tradeUse: 'Tilers, DIYers', price: 15.00 },
+            { id: 'liquid_nails', name: 'Liquid Nails (320g Cartridge)', tradeUse: 'General/Carpenters', price: 7.90 },
+            { id: 'plasterboard_screws', name: 'Plasterboard Screws (Box)', tradeUse: 'Drywallers', price: 18.00 },
+            { id: 'safety_glasses', name: 'Safety Glasses', tradeUse: 'All trades', price: 5.50 },
+            { id: 'worksite_gloves', name: 'Worksite Gloves (1 Pair)', tradeUse: 'All trades', price: 7.00 },
+            { id: 'hex_driver_set', name: 'Hex Head Driver Bit Set', tradeUse: 'Builders, Chippies', price: 9.90 },
+            { id: 'paint_rollers', name: 'Paint Rollers (3 Pack)', tradeUse: 'Painters, DIYers', price: 12.95 },
+            { id: 'dust_masks', name: 'Dust Masks (5 Pack)', tradeUse: 'All trades', price: 6.50 },
+            { id: 'hinges_standard', name: 'Hinges (Standard Pair)', tradeUse: 'Cabinetmakers, Builders', price: 6.00 },
+            { id: 'wall_plugs_screws', name: 'Wall Plugs + Screws (50 Pack)', tradeUse: 'General Fixings', price: 7.95 },
+            { id: 'silicone_remover', name: 'Silicone Remover Tool', tradeUse: 'Tilers, Renovators', price: 5.95 },
+            { id: 'drill_bit_10mm', name: '10mm Drill Bit (Masonry)', tradeUse: 'General Use', price: 5.50 },
+            { id: 'conduit_joiners', name: 'Joiners/Elbows for Conduit (20mm)', tradeUse: 'Sparkies', price: 3.80 },
+            { id: 'rags_wipes_25', name: 'Rags/Wipes (25 Pack)', tradeUse: 'Painters, General', price: 4.95 },
+            { id: 'mini_spirit_level', name: 'Mini Spirit Level (150mm)', tradeUse: 'All trades', price: 6.95 }
+        ];
+
+        // --- GLOBAL STATE ---
+        const cart = {}; // { productId: quantity }
+        const products = {}; // To easily look up products by ID
+
+        // --- DOM ELEMENTS ---
+        const productGrid = document.getElementById('product-grid');
+        const cartItemsEl = document.getElementById('cart-items');
+        const subtotalEl = document.getElementById('subtotal');
+        const totalEl = document.getElementById('total');
+        const orderForm = document.getElementById('order-form');
+        const orderStatusEl = document.getElementById('order-status');
+
+        // --- FUNCTIONS ---
+        function initializeProducts() {
+            productInventory.forEach(p => { products[p.id] = p; });
+        }
+
+        function renderProducts() {
+            productGrid.innerHTML = '';
+            for (const id in products) {
+                const product = products[id];
+                productGrid.innerHTML += `
+                    <div class="bg-gray-900/50 p-4 rounded-lg shadow-md flex flex-col justify-between border border-gray-700 hover:border-yellow-400 transition-all duration-300">
+                        <div>
+                            <h3 class="font-bold text-lg text-white">${product.name}</h3>
+                            <p class="text-sm text-gray-400 mb-2">${product.tradeUse}</p>
+                            <p class="text-2xl font-black brand-yellow mb-4">$${product.price.toFixed(2)}</p>
+                        </div>
+                        <button onclick="addToCart('${id}')" class="w-full bg-gray-700 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition-colors">
+                            Add to Cart
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderCart() {
+            if (Object.keys(cart).length === 0) {
+                cartItemsEl.innerHTML = '<p class="text-gray-400">Your cart is empty.</p>';
+                updateTotals();
+                return;
+            }
+
+            cartItemsEl.innerHTML = '';
+            for (const id in cart) {
+                const product = products[id];
+                const quantity = cart[id];
+                cartItemsEl.innerHTML += `
+                    <div class="flex justify-between items-center mb-2 animate-fade-in">
+                        <div>
+                            <p class="font-bold text-white">${product.name}</p>
+                            <p class="text-sm text-gray-400">$${product.price.toFixed(2)}</p>
+                        </div>
+                        <div class="flex items-center bg-gray-700 rounded">
+                            <button type="button" onclick="updateQuantity('${id}', -1)" class="px-2 py-1 font-bold text-lg">-</button>
+                            <span class="px-3 py-1 bg-gray-800">${quantity}</span>
+                            <button type="button" onclick="updateQuantity('${id}', 1)" class="px-2 py-1 font-bold text-lg">+</button>
+                        </div>
+                    </div>
+                `;
+            }
+            updateTotals();
+        }
+        
+        function updateTotals() {
+            let subtotal = 0;
+            for (const id in cart) {
+                subtotal += products[id].price * cart[id];
+            }
+            const total = subtotal > 0 ? subtotal + DELIVERY_FEE : 0;
+            const finalTotal = (subtotal === 0 && Object.keys(cart).length === 0) ? DELIVERY_FEE : subtotal + DELIVERY_FEE;
+
+
+            subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+            totalEl.textContent = `$${(subtotal > 0 ? finalTotal : 0.00).toFixed(2)}`;
+            if (subtotal === 0) {
+                 totalEl.textContent = `$${DELIVERY_FEE.toFixed(2)}`;
+            }
+
+        }
+
+        function addToCart(productId) {
+            cart[productId] = (cart[productId] || 0) + 1;
+            renderCart();
+        }
+
+        function updateQuantity(productId, change) {
+            if (cart[productId]) {
+                cart[productId] += change;
+                if (cart[productId] <= 0) {
+                    delete cart[productId];
+                }
+            }
+            renderCart();
+        }
+
+        function handleFormSubmit(event) {
+            event.preventDefault(); // Stop form from submitting normally
+
+            const customerName = document.getElementById('customer-name').value;
+            const customerPhone = document.getElementById('customer-phone').value;
+            const deliveryAddress = document.getElementById('delivery-address').value;
+            const customRequest = document.getElementById('custom-request').value;
+
+            if (Object.keys(cart).length === 0 && !customRequest.trim()) {
+                orderStatusEl.textContent = 'Your cart is empty.';
+                orderStatusEl.classList.add('text-red-500');
+                return;
+            }
+
+            orderStatusEl.textContent = 'Preparing order...';
+            orderStatusEl.classList.remove('text-red-500', 'text-green-500');
+            
+            // --- Build Email Body ---
+            let emailBody = "NEW CATAPULT ORDER\n";
+            emailBody += "======================\n\n";
+            emailBody += `CUSTOMER: ${customerName}\n`;
+            emailBody += `PHONE: ${customerPhone}\n`;
+            emailBody += `ADDRESS: ${deliveryAddress}\n\n`;
+            emailBody += "--- ITEMS ---\n";
+
+            let subtotal = 0;
+            for (const id in cart) {
+                const item = products[id];
+                const quantity = cart[id];
+                const itemTotal = item.price * quantity;
+                subtotal += itemTotal;
+                emailBody += `${quantity} x ${item.name} (@ $${item.price.toFixed(2)} each) = $${itemTotal.toFixed(2)}\n`;
+            }
+
+            if (customRequest.trim()) {
+                emailBody += "\n--- CUSTOM REQUEST ---\n";
+                emailBody += `${customRequest}\n`;
+            }
+            
+            emailBody += "\n======================\n";
+            emailBody += `SUBTOTAL: $${subtotal.toFixed(2)}\n`;
+            emailBody += `DELIVERY FEE: $${DELIVERY_FEE.toFixed(2)}\n`;
+            emailBody += `TOTAL: $${(subtotal + DELIVERY_FEE).toFixed(2)}\n\n`;
+            emailBody += `Order placed at: ${new Date().toLocaleString('en-AU')}`;
+
+            // --- Create and open mailto link ---
+            const subject = `New Catapult Order from ${customerName}`;
+            const mailtoLink = `mailto:${YOUR_EMAIL_ADDRESS}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+            
+            window.location.href = mailtoLink;
+            
+            orderStatusEl.textContent = 'Your email app has been opened to send the order!';
+            orderStatusEl.classList.add('text-green-500');
+        }
+
+        // --- INITIAL LOAD ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeProducts();
+            renderProducts();
+            renderCart();
+            orderForm.addEventListener('submit', handleFormSubmit);
+        });
+    </script>
+</body>
+</html>
