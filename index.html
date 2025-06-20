@@ -101,6 +101,7 @@
 
                     <h3 class="header-font text-xl font-bold mt-6 mb-2 tracking-wide">DELIVERY DETAILS (SYDNEY CBD)</h3>
                     <input type="text" id="customer-name" name="customer_name" placeholder="Your Name" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
+                    <input type="email" id="customer-email" name="email" placeholder="Your Email" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
                     <input type="tel" id="customer-phone" name="customer_phone" placeholder="Your Phone Number" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-2 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
                     <input type="text" id="delivery-address" name="delivery_address" placeholder="Job Site Address (Sydney CBD)" class="w-full bg-gray-900 text-white p-3 rounded border border-gray-600 mb-4 focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 outline-none" required>
                     
@@ -236,20 +237,29 @@
             const form = event.target;
             const data = new FormData(form);
 
-            const hasItems = Object.keys(cart).length > 0;
+            const hasItemsInCart = Object.keys(cart).length > 0;
             const hasCustomRequest = data.get('custom_request').trim() !== '';
 
-            if (!hasItems && !hasCustomRequest) {
+            if (!hasItemsInCart && !hasCustomRequest) {
                 orderStatusEl.textContent = 'Your cart is empty.';
                 orderStatusEl.className = 'text-center mt-4 font-bold text-red-500';
                 return;
             }
 
-            // Append cart data to the form data for submission
-            data.append('order_summary', JSON.stringify(cart, (key, value) => {
-                if (key) return { name: products[key].name, quantity: value };
-            }, 2));
-             const subtotal = Object.keys(cart).reduce((acc, id) => acc + (products[id].price * cart[id]), 0);
+            // **FIX:** Create a human-readable text block for the order items
+            let orderDetails = "--- ITEMS ORDERED ---\n";
+            if (hasItemsInCart) {
+                for (const id in cart) {
+                    const product = products[id];
+                    const quantity = cart[id];
+                    orderDetails += `${quantity} x ${product.name}\n`;
+                }
+            } else {
+                 orderDetails += "No pre-listed items selected.\n"
+            }
+            data.append('order_details', orderDetails);
+            
+            const subtotal = Object.keys(cart).reduce((acc, id) => acc + (products[id].price * cart[id]), 0);
             data.append('subtotal', `$${subtotal.toFixed(2)}`);
             data.append('delivery_fee', `$${DELIVERY_FEE.toFixed(2)}`);
             data.append('total_cost', `$${(subtotal + DELIVERY_FEE).toFixed(2)}`);
